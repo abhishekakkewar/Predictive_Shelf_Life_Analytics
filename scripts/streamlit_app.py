@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 import datetime
 import os
-import google.generativeai as genai
+#import google.generativeai as genai
 
 # Load the trained LightGBM model
 MODEL_PATH = 'models/LightGBM_shelf_life_model.pkl'
