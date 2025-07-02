@@ -74,14 +74,6 @@ flowchart LR
 - **Best Model:** LightGBM (RMSE: 2.75, R²: 0.97)
 - **Business Value:** Potential to save millions by reducing spoilage, improving inventory turnover, and supporting sustainability goals
 
-## 🤝 Team
-
-- Abhishek Akkewar
-- Akash Deep Sharma
-- Rashi RKG
-- Nidhi Kumari
-- Syed Ismail Khadry
-
 ## 📄 License
 
 This project is for educational and demonstration purposes.
