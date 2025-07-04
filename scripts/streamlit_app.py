@@ -47,14 +47,17 @@ st.markdown("""
     }
     
     .stTabs [data-baseweb="tab"] {
-        background-color: #f0f2f6;
+        background-color: #222 !important;
         border-radius: 4px 4px 0px 0px;
         padding: 10px 16px;
+        color: #fff !important;
+        font-weight: 500;
+        transition: background 0.2s, color 0.2s;
     }
     
     .stTabs [aria-selected="true"] {
-        background-color: #1f77b4;
-        color: white;
+        background-color: #1f77b4 !important;
+        color: #fff !important;
     }
 </style>
 """, unsafe_allow_html=True)
