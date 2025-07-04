@@ -41,11 +41,6 @@ st.markdown("""
         margin: 1rem 0;
     }
     
-    /* Make background white */
-    .stApp {
-        background-color: white;
-    }
-    
     /* Style for better visual alignment */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
