@@ -9,6 +9,8 @@ import os
 from datetime import datetime, timedelta, date
 import warnings
 import io
+import shap
+import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 
 # Page configuration
@@ -261,7 +263,7 @@ def main():
         return
     
     # Main content
-    tab1, tab2, tab3, tab4 = st.tabs(["🎯 Prediction", "📈 Analytics", "🔍 Feature Importance", "💬 AI Assistant"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Prediction", "📈 Analytics", "🔍 Feature Importance", "💬 AI Assistant", "�� Explainable AI"])
     
     with tab1:
         st.header("🎯 Shelf Life Prediction")
@@ -916,6 +918,57 @@ def main():
         
         **Stay tuned for AI Assistant updates!** 🤖✨
         """)
+
+    with tab5:
+        st.header("🧩 Explainable AI: Model Interpretability")
+        st.markdown("""
+        This section provides interpretability for the tuned LightGBM model using SHAP (SHapley Additive exPlanations). SHAP helps you understand how each feature impacts the model's predictions, both globally and for individual samples.
+        """)
+
+        if model is not None and df is not None:
+            # Prepare feature data (exclude target and non-feature columns)
+            feature_cols = [col for col in df.columns if col not in ["Remaining_Shelf_Life", "Manufacturing_Date"]]
+            X = df[feature_cols]
+
+            st.subheader("🔎 Model Overview")
+            st.markdown("""
+            - **Model:** Tuned LightGBM Regressor
+            - **Best for:** Predicting remaining shelf life of perishable products
+            - **Why LightGBM?**: Outperformed other models (RandomForest, XGBoost) in accuracy and speed after hyperparameter tuning.
+            """)
+
+            # SHAP explainer
+            explainer = shap.Explainer(model)
+            shap_values = explainer(X)
+
+            st.subheader("🌍 Global Feature Importance (SHAP)")
+            st.markdown("The plot below shows which features have the biggest impact on model predictions across the whole dataset.")
+            # SHAP summary plot (bar)
+            import matplotlib.pyplot as plt
+            fig_summary, ax = plt.subplots(figsize=(8, 5))
+            shap.summary_plot(shap_values, X, plot_type="bar", show=False)
+            st.pyplot(fig_summary)
+
+            st.subheader("🔬 Local Explanation (Single Prediction)")
+            st.markdown("Select a sample to see how each feature contributed to its prediction.")
+            sample_idx = st.number_input("Select sample index", min_value=0, max_value=len(X)-1, value=0)
+            sample = X.iloc[[sample_idx]]
+            sample_shap = shap_values[sample_idx]
+            st.write("**Feature values for this sample:**")
+            st.dataframe(sample.T, use_container_width=True)
+            # SHAP force plot (as image)
+            force_fig = shap.plots.force(explainer.expected_value, sample_shap.values, sample, matplotlib=True, show=False)
+            st.pyplot(force_fig, clear_figure=True)
+
+            st.subheader("📝 Plain English Explanation")
+            st.markdown("""
+            - **Positive SHAP values** (red) push the prediction higher (longer shelf life).
+            - **Negative SHAP values** (blue) push the prediction lower (shorter shelf life).
+            - The most important features are shown in the global plot above.
+            - For the selected sample, the force plot shows which features most influenced the prediction.
+            """)
+        else:
+            st.warning("Model or data not loaded. Please ensure the model and data are available.")
 
 if __name__ == "__main__":
     main()
