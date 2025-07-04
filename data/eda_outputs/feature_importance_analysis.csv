@@ -1,0 +1,34 @@
+Feature,Importance,Category
+Initial_Shelf_Life,391,Original Features
+Temp_Transit_Interaction,389,Interaction Features
+Humidity_Transit_Interaction,384,Interaction Features
+Temp_Humidity_Interaction,370,Interaction Features
+Storage_Humidity,320,Original Features
+Product_Age,206,Product Type
+Age_Temp_Interaction,194,Interaction Features
+Storage_Temperature,189,Original Features
+Age_Ratio,165,Time-Based Features
+Environmental_Risk,118,Risk Scores
+Day_of_Week,85,Time-Based Features
+Days_in_Transit,47,Time-Based Features
+Is_Dairy,42,Binary Features
+Product_Cheese,12,Product Type
+Product_Yogurt,10,Product Type
+Product_Juice,10,Product Type
+Product_Milk,9,Product Type
+Product_Bread,7,Product Type
+Shelf_Life_Medium,6,Shelf Life Category
+Month,2,Time-Based Features
+Is_Weekend,0,Binary Features
+Humidity_Risk_Score,0,Risk Level
+Temp_Risk_Score,0,Risk Level
+Season,0,Time-Based Features
+Temp_Z_Score,0,Statistical Features
+High_Humidity_Flag,0,Business Logic Flags
+Long_Transit_Flag,0,Business Logic Flags
+Humidity_Percentile,0,Statistical Features
+High_Temp_Flag,0,Business Logic Flags
+Shelf_Life_Short,0,Shelf Life Category
+Shelf_Life_Long,0,Shelf Life Category
+Risk_Low,0,Risk Level
+Risk_Medium,0,Risk Level

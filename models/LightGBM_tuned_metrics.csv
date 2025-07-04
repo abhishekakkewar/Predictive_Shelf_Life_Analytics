@@ -1,0 +1,2 @@
+Model,R2_CV,learning_rate,max_depth,n_estimators,num_leaves
+LightGBM_Tuned,0.9711466340249446,0.05,3,300,15
