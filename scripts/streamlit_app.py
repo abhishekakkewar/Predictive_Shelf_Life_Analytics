@@ -929,6 +929,23 @@ def main():
             # Prepare feature data (exclude target and non-feature columns)
             feature_cols = [col for col in df.columns if col not in ["Remaining_Shelf_Life", "Manufacturing_Date"]]
             X = df[feature_cols]
+            # Ensure all columns are numeric or boolean for SHAP/LightGBM
+            dropped_cols = []
+            for col in X.columns:
+                if X[col].dtype == 'object':
+                    try:
+                        # Try to convert to numeric
+                        X[col] = pd.to_numeric(X[col], errors='raise')
+                    except Exception:
+                        # Try to convert to bool
+                        if set(X[col].dropna().unique()) <= {0, 1, True, False}:
+                            X[col] = X[col].astype(bool)
+                        else:
+                            dropped_cols.append(col)
+            if dropped_cols:
+                st.warning(f"The following columns are not numeric/bool and will be dropped from SHAP analysis: {', '.join(dropped_cols)}")
+                X = X.drop(columns=dropped_cols)
+            X = X.select_dtypes(include=[np.number, bool])
 
             st.subheader("🔎 Model Overview")
             st.markdown("""
