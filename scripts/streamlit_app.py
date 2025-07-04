@@ -584,26 +584,46 @@ def main():
         
         with col1:
             # Temperature vs Shelf Life
-            fig = px.scatter(
-                df,
-                x='Storage_Temperature',
-                y='Remaining_Shelf_Life',
-                color='Product_Type',
-                title="Temperature vs Remaining Shelf Life",
-                trendline="ols"
-            )
+            try:
+                fig = px.scatter(
+                    df,
+                    x='Storage_Temperature',
+                    y='Remaining_Shelf_Life',
+                    color='Product_Type',
+                    title="Temperature vs Remaining Shelf Life",
+                    trendline="ols"
+                )
+            except ImportError:
+                # Fallback without trendline if statsmodels is not available
+                fig = px.scatter(
+                    df,
+                    x='Storage_Temperature',
+                    y='Remaining_Shelf_Life',
+                    color='Product_Type',
+                    title="Temperature vs Remaining Shelf Life"
+                )
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
             # Humidity vs Shelf Life
-            fig = px.scatter(
-                df,
-                x='Storage_Humidity',
-                y='Remaining_Shelf_Life',
-                color='Product_Type',
-                title="Humidity vs Remaining Shelf Life",
-                trendline="ols"
-            )
+            try:
+                fig = px.scatter(
+                    df,
+                    x='Storage_Humidity',
+                    y='Remaining_Shelf_Life',
+                    color='Product_Type',
+                    title="Humidity vs Remaining Shelf Life",
+                    trendline="ols"
+                )
+            except ImportError:
+                # Fallback without trendline if statsmodels is not available
+                fig = px.scatter(
+                    df,
+                    x='Storage_Humidity',
+                    y='Remaining_Shelf_Life',
+                    color='Product_Type',
+                    title="Humidity vs Remaining Shelf Life"
+                )
             st.plotly_chart(fig, use_container_width=True)
         
         # Row 4: Advanced analytics
@@ -624,14 +644,24 @@ def main():
         
         with col2:
             # Product age analysis
-            fig = px.scatter(
-                df,
-                x='Product_Age',
-                y='Remaining_Shelf_Life',
-                color='Product_Type',
-                title="Product Age vs Remaining Shelf Life",
-                trendline="ols"
-            )
+            try:
+                fig = px.scatter(
+                    df,
+                    x='Product_Age',
+                    y='Remaining_Shelf_Life',
+                    color='Product_Type',
+                    title="Product Age vs Remaining Shelf Life",
+                    trendline="ols"
+                )
+            except ImportError:
+                # Fallback without trendline if statsmodels is not available
+                fig = px.scatter(
+                    df,
+                    x='Product_Age',
+                    y='Remaining_Shelf_Life',
+                    color='Product_Type',
+                    title="Product Age vs Remaining Shelf Life"
+                )
             st.plotly_chart(fig, use_container_width=True)
         
         # Correlation heatmap
