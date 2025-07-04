@@ -22,31 +22,49 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
+    /* Main app background */
+    .stApp {
+        background-color: white;
+    }
+    
+    /* Ensure all text is readable */
+    .stMarkdown, .stText, .stSelectbox, .stNumberInput, .stSlider, .stDateInput, .stButton, .stFileUploader {
+        color: #262730 !important;
+    }
+    
+    /* Headers */
     .main-header {
         font-size: 2.5rem;
-        color: #1f77b4;
+        color: #1f77b4 !important;
         text-align: center;
         margin-bottom: 2rem;
+        font-weight: bold;
     }
+    
+    /* All headers should be dark */
+    h1, h2, h3, h4, h5, h6 {
+        color: #262730 !important;
+    }
+    
+    /* Metric cards */
     .metric-card {
         background-color: #f0f2f6;
         padding: 1rem;
         border-radius: 0.5rem;
         border-left: 4px solid #1f77b4;
+        color: #262730;
     }
+    
+    /* Feature importance */
     .feature-importance {
         background-color: #f8f9fa;
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
+        color: #262730;
     }
     
-    /* Make background white */
-    .stApp {
-        background-color: white;
-    }
-    
-    /* Style for better visual alignment */
+    /* Tabs styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
@@ -55,11 +73,67 @@ st.markdown("""
         background-color: #f0f2f6;
         border-radius: 4px 4px 0px 0px;
         padding: 10px 16px;
+        color: #262730 !important;
     }
     
     .stTabs [aria-selected="true"] {
         background-color: #1f77b4;
-        color: white;
+        color: white !important;
+    }
+    
+    /* Form elements */
+    .stSelectbox > div > div {
+        color: #262730 !important;
+    }
+    
+    .stNumberInput > div > div {
+        color: #262730 !important;
+    }
+    
+    .stSlider > div > div {
+        color: #262730 !important;
+    }
+    
+    /* Dataframes */
+    .stDataFrame {
+        color: #262730 !important;
+    }
+    
+    /* Success, warning, error messages */
+    .stSuccess {
+        color: #0d5c63 !important;
+    }
+    
+    .stWarning {
+        color: #856404 !important;
+    }
+    
+    .stError {
+        color: #721c24 !important;
+    }
+    
+    .stInfo {
+        color: #0c5460 !important;
+    }
+    
+    /* Buttons */
+    .stButton > button {
+        color: white !important;
+    }
+    
+    /* File uploader */
+    .stFileUploader > div {
+        color: #262730 !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        color: #262730 !important;
+    }
+    
+    /* Sidebar */
+    .css-1d391kg {
+        color: #262730 !important;
     }
 </style>
 """, unsafe_allow_html=True)
