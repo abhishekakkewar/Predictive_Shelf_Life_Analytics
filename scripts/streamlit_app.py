@@ -344,7 +344,12 @@ def main():
             prediction = predict_shelf_life(input_data, model, scaler)
             
             if prediction is not None:
-                st.success(f"✅ **Predicted Remaining Shelf Life: {prediction:.1f} days**")
+                # Highlighted prediction output
+                st.markdown(f"""
+                <div style='background: linear-gradient(90deg, #1f77b4 60%, #43cea2 100%); padding: 1.2rem; border-radius: 0.7rem; margin-bottom: 1.2rem; text-align: center;'>
+                    <span style='font-size:2.2rem; font-weight: bold; color: white;'>Predicted Remaining Shelf Life: {prediction:.1f} days</span>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Additional insights
                 col1, col2, col3 = st.columns(3)
