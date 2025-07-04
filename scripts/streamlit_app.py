@@ -6,13 +6,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
-<<<<<<< HEAD
 from datetime import datetime, timedelta, date
 import warnings
+import io
 warnings.filterwarnings('ignore')
-=======
-#import google.generativeai as genai
->>>>>>> da20895ba7e790b0bed78215f4b3fe44f9397534
 
 # Page configuration
 st.set_page_config(
@@ -163,6 +160,66 @@ def predict_shelf_life(input_data, model, scaler):
         st.error(f"Error with prediction: {str(e)}")
         return None
 
+def validate_bulk_data(df):
+    """Validate bulk upload data"""
+    errors = []
+    
+    # Check required columns
+    required_columns = [
+        'Product_Type', 'Initial_Shelf_Life', 'Risk_Level', 'Shelf_Life_Category',
+        'Storage_Temperature', 'Storage_Humidity', 'Days_in_Transit', 'Manufacturing_Date'
+    ]
+    
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        errors.append(f"Missing required columns: {', '.join(missing_columns)}")
+    
+    # Check data types
+    if 'Initial_Shelf_Life' in df.columns:
+        if not pd.api.types.is_numeric_dtype(df['Initial_Shelf_Life']):
+            errors.append("Initial_Shelf_Life must be numeric")
+    
+    if 'Storage_Temperature' in df.columns:
+        if not pd.api.types.is_numeric_dtype(df['Storage_Temperature']):
+            errors.append("Storage_Temperature must be numeric")
+    
+    if 'Storage_Humidity' in df.columns:
+        if not pd.api.types.is_numeric_dtype(df['Storage_Humidity']):
+            errors.append("Storage_Humidity must be numeric")
+    
+    if 'Days_in_Transit' in df.columns:
+        if not pd.api.types.is_numeric_dtype(df['Days_in_Transit']):
+            errors.append("Days_in_Transit must be numeric")
+    
+    # Check valid values
+    valid_products = ['Bread', 'Cheese', 'Juice', 'Milk', 'Yogurt']
+    valid_risk_levels = ['Low', 'Medium', 'High']
+    valid_categories = ['Short', 'Medium', 'Long']
+    
+    if 'Product_Type' in df.columns:
+        invalid_products = df[~df['Product_Type'].isin(valid_products)]['Product_Type'].unique()
+        if len(invalid_products) > 0:
+            errors.append(f"Invalid Product_Type values: {', '.join(invalid_products)}")
+    
+    if 'Risk_Level' in df.columns:
+        invalid_risks = df[~df['Risk_Level'].isin(valid_risk_levels)]['Risk_Level'].unique()
+        if len(invalid_risks) > 0:
+            errors.append(f"Invalid Risk_Level values: {', '.join(invalid_risks)}")
+    
+    if 'Shelf_Life_Category' in df.columns:
+        invalid_cats = df[~df['Shelf_Life_Category'].isin(valid_categories)]['Shelf_Life_Category'].unique()
+        if len(invalid_cats) > 0:
+            errors.append(f"Invalid Shelf_Life_Category values: {', '.join(invalid_cats)}")
+    
+    # Check date format
+    if 'Manufacturing_Date' in df.columns:
+        try:
+            pd.to_datetime(df['Manufacturing_Date'])
+        except:
+            errors.append("Manufacturing_Date must be in valid date format (YYYY-MM-DD)")
+    
+    return errors
+
 def main():
     # Header
     st.markdown('<h1 class="main-header">📊 Predictive Shelf Life Analytics</h1>', unsafe_allow_html=True)
@@ -198,7 +255,7 @@ def main():
             # Product details
             product_type = st.selectbox(
                 "Product Type",
-                ['Yogurt', 'Milk', 'Cheese', 'Butter', 'Cream']
+                ['Bread', 'Cheese', 'Juice', 'Milk', 'Yogurt']
             )
             
             initial_shelf_life = st.number_input(
@@ -219,113 +276,90 @@ def main():
             )
         
         with col2:
-            st.subheader("Storage Conditions")
+            st.subheader("Environmental Conditions")
             
-            # Storage conditions
-            storage_temperature = st.slider(
+            storage_temperature = st.number_input(
                 "Storage Temperature (°C)",
-                min_value=-5.0,
+                min_value=-10.0,
                 max_value=25.0,
                 value=4.0,
-                step=0.5
+                step=0.1
             )
             
-            storage_humidity = st.slider(
+            storage_humidity = st.number_input(
                 "Storage Humidity (%)",
-                min_value=30,
-                max_value=95,
-                value=65
+                min_value=20.0,
+                max_value=100.0,
+                value=60.0,
+                step=0.1
             )
             
             days_in_transit = st.number_input(
                 "Days in Transit",
-                min_value=0,
+                min_value=1,
                 max_value=30,
-                value=2
+                value=3
             )
             
-            days_in_storage = st.number_input(
-                "Days in Storage",
-                min_value=0,
-                max_value=365,
-                value=5
+            manufacturing_date = st.date_input(
+                "Manufacturing Date",
+                value=date.today() - timedelta(days=7),
+                max_value=date.today()
             )
-        
-        # Manufacturing date
-        st.subheader("Manufacturing Date")
-        manufacturing_date = st.date_input(
-            "Manufacturing Date",
-            value=datetime.now() - timedelta(days=10)
-        )
         
         # Prediction button
         if st.button("🚀 Predict Remaining Shelf Life", type="primary"):
-            with st.spinner("Making prediction..."):
-                input_data = {
-                    'product_type': product_type,
-                    'initial_shelf_life': initial_shelf_life,
-                    'risk_level': risk_level,
-                    'shelf_life_category': shelf_life_category,
-                    'storage_temperature': storage_temperature,
-                    'storage_humidity': storage_humidity,
-                    'days_in_transit': days_in_transit,
-                    'days_in_storage': days_in_storage,
-                    'manufacturing_date': manufacturing_date
-                }
+            input_data = {
+                'product_type': product_type,
+                'initial_shelf_life': initial_shelf_life,
+                'risk_level': risk_level,
+                'shelf_life_category': shelf_life_category,
+                'storage_temperature': storage_temperature,
+                'storage_humidity': storage_humidity,
+                'days_in_transit': days_in_transit,
+                'manufacturing_date': manufacturing_date
+            }
+            
+            prediction = predict_shelf_life(input_data, model, scaler)
+            
+            if prediction is not None:
+                st.success(f"✅ **Predicted Remaining Shelf Life: {prediction:.1f} days**")
                 
-                prediction = predict_shelf_life(input_data, model, scaler)
+                # Additional insights
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Initial Shelf Life", f"{initial_shelf_life} days")
+                with col2:
+                    st.metric("Product Age", f"{(date.today() - manufacturing_date).days} days")
+                with col3:
+                    st.metric("Storage Temp", f"{storage_temperature}°C")
                 
-                # Display results
-                st.success("✅ Prediction Complete!")
-                
-                if prediction is not None:
-                    # Main prediction display
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.metric(
-                            "Remaining Shelf Life (Tuned LightGBM)",
-                            f"{prediction:.1f} days",
-                            delta=f"{prediction - initial_shelf_life:.1f} days"
-                        )
-                    
-                    with col2:
-                        # Calculate percentage remaining
-                        percentage_remaining = (prediction / initial_shelf_life) * 100
-                        st.metric(
-                            "Shelf Life Remaining",
-                            f"{percentage_remaining:.1f}%"
-                        )
-                    
-                    # Additional insights
-                    st.subheader("📊 Prediction Insights")
-                    
-                    if prediction < initial_shelf_life * 0.5:
-                        st.error("⚠️ Critical: Product has less than 50% shelf life remaining!")
-                    elif prediction < initial_shelf_life * 0.7:
-                        st.warning("⚠️ Warning: Product has less than 70% shelf life remaining")
-                    else:
-                        st.success("✅ Good: Product has substantial shelf life remaining")
-                    
-                    # Risk assessment
-                    st.subheader("⚠️ Risk Assessment")
-                    risk_factors = []
-                    
-                    if storage_temperature > 8:
-                        risk_factors.append("High storage temperature")
-                    if storage_humidity > 80:
-                        risk_factors.append("High humidity levels")
-                    if days_in_transit > 7:
-                        risk_factors.append("Extended transit time")
-                    if days_in_storage > 30:
-                        risk_factors.append("Extended storage period")
-                    
-                    if risk_factors:
-                        st.warning(f"Risk factors detected: {', '.join(risk_factors)}")
-                    else:
-                        st.success("No significant risk factors detected")
+                # Recommendations
+                st.info("💡 **Recommendations:**")
+                if prediction < 7:
+                    st.warning("⚠️ **Critical:** Product has very limited remaining shelf life. Consider immediate action.")
+                elif prediction < 14:
+                    st.warning("⚠️ **Warning:** Product has limited remaining shelf life. Monitor closely.")
                 else:
-                    st.error("Failed to make prediction. Please check your input data.")
+                    st.success("✅ **Good:** Product has adequate remaining shelf life.")
+                
+                # Optimization tips
+                st.markdown("**Optimization Tips:**")
+                tips = []
+                if storage_temperature > 8:
+                    tips.append("Lower storage temperature to extend shelf life")
+                if storage_humidity > 75:
+                    tips.append("Reduce humidity levels to prevent spoilage")
+                if days_in_transit > 5:
+                    tips.append("Optimize transit time to preserve freshness")
+                
+                if tips:
+                    for tip in tips:
+                        st.markdown(f"• {tip}")
+                else:
+                    st.success("Current conditions are optimal for shelf life preservation!")
+            else:
+                st.error("Failed to make prediction. Please check your input data.")
         
         # Bulk Prediction Section
         st.markdown("---")
@@ -342,256 +376,103 @@ def main():
         if uploaded_file is not None:
             try:
                 # Read the uploaded file
-                bulk_data = pd.read_excel(uploaded_file)
-                st.success(f"✅ File uploaded successfully! Found {len(bulk_data)} records.")
+                bulk_df = pd.read_excel(uploaded_file)
+                st.success(f"✅ File uploaded successfully! Found {len(bulk_df)} records.")
                 
-                # Display sample of uploaded data
-                st.subheader("📋 Sample of Uploaded Data")
-                st.dataframe(bulk_data.head(), use_container_width=True)
+                # Show preview
+                st.subheader("📋 Data Preview")
+                st.dataframe(bulk_df.head(), use_container_width=True)
                 
-                # Check required columns
-                required_columns = [
-                    'Product_Type', 'Initial_Shelf_Life', 'Risk_Level', 'Shelf_Life_Category',
-                    'Storage_Temperature', 'Storage_Humidity', 'Days_in_Transit', 'Manufacturing_Date'
-                ]
+                # Validate data
+                st.subheader("🔍 Data Validation")
+                validation_errors = validate_bulk_data(bulk_df)
                 
-                missing_columns = [col for col in required_columns if col not in bulk_data.columns]
-                
-                if missing_columns:
-                    st.error(f"❌ Missing required columns: {', '.join(missing_columns)}")
-                    st.info("""
-                    **Required columns:**
-                    - Product_Type (Bread, Cheese, Juice, Milk, Yogurt)
-                    - Initial_Shelf_Life (numeric)
-                    - Risk_Level (Low, Medium, High)
-                    - Shelf_Life_Category (Short, Medium, Long)
-                    - Storage_Temperature (numeric, °C)
-                    - Storage_Humidity (numeric, %)
-                    - Days_in_Transit (numeric)
-                    - Manufacturing_Date (date format)
-                    """)
+                if validation_errors:
+                    st.error("❌ Validation errors found:")
+                    for error in validation_errors:
+                        st.error(f"• {error}")
                 else:
-                    # Data validation
-                    st.subheader("🔍 Data Validation")
+                    st.success("✅ All data validation checks passed!")
                     
-                    # Check data types and values
-                    validation_issues = []
-                    
-                    # Product type validation
-                    valid_products = ['Bread', 'Cheese', 'Juice', 'Milk', 'Yogurt']
-                    invalid_products = bulk_data[~bulk_data['Product_Type'].isin(valid_products)]['Product_Type'].unique()
-                    if len(invalid_products) > 0:
-                        validation_issues.append(f"Invalid Product_Type values: {', '.join(invalid_products)}")
-                    
-                    # Risk level validation
-                    valid_risks = ['Low', 'Medium', 'High']
-                    invalid_risks = bulk_data[~bulk_data['Risk_Level'].isin(valid_risks)]['Risk_Level'].unique()
-                    if len(invalid_risks) > 0:
-                        validation_issues.append(f"Invalid Risk_Level values: {', '.join(invalid_risks)}")
-                    
-                    # Shelf life category validation
-                    valid_categories = ['Short', 'Medium', 'Long']
-                    invalid_categories = bulk_data[~bulk_data['Shelf_Life_Category'].isin(valid_categories)]['Shelf_Life_Category'].unique()
-                    if len(invalid_categories) > 0:
-                        validation_issues.append(f"Invalid Shelf_Life_Category values: {', '.join(invalid_categories)}")
-                    
-                    # Numeric validation
-                    numeric_columns = ['Initial_Shelf_Life', 'Storage_Temperature', 'Storage_Humidity', 'Days_in_Transit']
-                    for col in numeric_columns:
-                        if not pd.api.types.is_numeric_dtype(bulk_data[col]):
-                            validation_issues.append(f"{col} must be numeric")
-                    
-                    # Date validation
-                    try:
-                        pd.to_datetime(bulk_data['Manufacturing_Date'])
-                    except:
-                        validation_issues.append("Manufacturing_Date must be in valid date format")
-                    
-                    if validation_issues:
-                        st.error("❌ Data validation failed:")
-                        for issue in validation_issues:
-                            st.write(f"• {issue}")
-                    else:
-                        st.success("✅ Data validation passed!")
-                        
-                        # Bulk prediction button
-                        if st.button("🚀 Start Bulk Prediction", type="primary"):
-                            with st.spinner("Processing bulk predictions..."):
-                                predictions_list = []
-                                errors_list = []
-                                
-                                # Process each row
-                                for idx, row in bulk_data.iterrows():
-                                    try:
-                                        # Prepare input data
-                                        input_data = {
-                                            'product_type': row['Product_Type'],
-                                            'initial_shelf_life': float(row['Initial_Shelf_Life']),
-                                            'risk_level': row['Risk_Level'],
-                                            'shelf_life_category': row['Shelf_Life_Category'],
-                                            'storage_temperature': float(row['Storage_Temperature']),
-                                            'storage_humidity': float(row['Storage_Humidity']),
-                                            'days_in_transit': int(row['Days_in_Transit']),
-                                            'days_in_storage': 5,  # Default value
-                                            'manufacturing_date': pd.to_datetime(row['Manufacturing_Date']).date()
-                                        }
-                                        
-                                        # Make prediction
-                                        prediction = predict_shelf_life(input_data, model, scaler)
-                                        
-                                        if prediction is not None:
-                                            # Calculate additional metrics
-                                            percentage_remaining = (prediction / input_data['initial_shelf_life']) * 100
-                                            
-                                            # Risk assessment
-                                            risk_factors = []
-                                            if input_data['storage_temperature'] > 8:
-                                                risk_factors.append("High temperature")
-                                            if input_data['storage_humidity'] > 80:
-                                                risk_factors.append("High humidity")
-                                            if input_data['days_in_transit'] > 7:
-                                                risk_factors.append("Long transit")
-                                            
-                                            # Status classification
-                                            if prediction < input_data['initial_shelf_life'] * 0.5:
-                                                status = "Critical"
-                                            elif prediction < input_data['initial_shelf_life'] * 0.7:
-                                                status = "Warning"
-                                            else:
-                                                status = "Good"
-                                            
-                                            predictions_list.append({
-                                                'Row_Index': idx + 1,
-                                                'Product_Type': input_data['product_type'],
-                                                'Initial_Shelf_Life': input_data['initial_shelf_life'],
-                                                'Predicted_Remaining_Shelf_Life': round(prediction, 2),
-                                                'Shelf_Life_Remaining_Percentage': round(percentage_remaining, 1),
-                                                'Status': status,
-                                                'Risk_Factors': ', '.join(risk_factors) if risk_factors else 'None',
-                                                'Storage_Temperature': input_data['storage_temperature'],
-                                                'Storage_Humidity': input_data['storage_humidity'],
-                                                'Days_in_Transit': input_data['days_in_transit'],
-                                                'Manufacturing_Date': input_data['manufacturing_date']
-                                            })
-                                        else:
-                                            errors_list.append(f"Row {idx + 1}: Prediction failed")
-                                            
-                                    except Exception as e:
-                                        errors_list.append(f"Row {idx + 1}: {str(e)}")
-                                
-                                # Create results dataframe
-                                if predictions_list:
-                                    results_df = pd.DataFrame(predictions_list)
+                    # Process predictions
+                    if st.button("🚀 Process Bulk Predictions", type="primary"):
+                        with st.spinner("Processing predictions..."):
+                            predictions = []
+                            
+                            for idx, row in bulk_df.iterrows():
+                                try:
+                                    # Convert date string to date object if needed
+                                    mfg_date = row['Manufacturing_Date']
+                                    if isinstance(mfg_date, str):
+                                        mfg_date = pd.to_datetime(mfg_date).date()
+                                    elif hasattr(mfg_date, 'date'):
+                                        mfg_date = mfg_date.date()
                                     
-                                    # Display results summary
-                                    st.success(f"✅ Bulk prediction completed! Processed {len(predictions_list)} records successfully.")
+                                    input_data = {
+                                        'product_type': row['Product_Type'],
+                                        'initial_shelf_life': row['Initial_Shelf_Life'],
+                                        'risk_level': row['Risk_Level'],
+                                        'shelf_life_category': row['Shelf_Life_Category'],
+                                        'storage_temperature': row['Storage_Temperature'],
+                                        'storage_humidity': row['Storage_Humidity'],
+                                        'days_in_transit': row['Days_in_Transit'],
+                                        'manufacturing_date': mfg_date
+                                    }
                                     
-                                    if errors_list:
-                                        st.warning(f"⚠️ {len(errors_list)} records had errors:")
-                                        for error in errors_list[:5]:  # Show first 5 errors
-                                            st.write(f"• {error}")
-                                        if len(errors_list) > 5:
-                                            st.write(f"• ... and {len(errors_list) - 5} more errors")
+                                    prediction = predict_shelf_life(input_data, model, scaler)
+                                    predictions.append(prediction if prediction is not None else 0)
                                     
-                                    # Results summary
-                                    col1, col2, col3, col4 = st.columns(4)
-                                    with col1:
-                                        st.metric("Total Processed", len(predictions_list))
-                                    with col2:
-                                        st.metric("Average Remaining Shelf Life", f"{results_df['Predicted_Remaining_Shelf_Life'].mean():.1f} days")
-                                    with col3:
-                                        critical_count = len(results_df[results_df['Status'] == 'Critical'])
-                                        st.metric("Critical Status", critical_count)
-                                    with col4:
-                                        good_count = len(results_df[results_df['Status'] == 'Good'])
-                                        st.metric("Good Status", good_count)
-                                    
-                                    # Display results table
-                                    st.subheader("📊 Prediction Results")
-                                    st.dataframe(results_df, use_container_width=True)
-                                    
-                                    # Download functionality
-                                    st.subheader("💾 Download Results")
-                                    
-                                    # Create Excel file with multiple sheets
-                                    from io import BytesIO
-                                    import openpyxl
-                                    from openpyxl.styles import Font, PatternFill, Alignment
-                                    
-                                    output = BytesIO()
-                                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                                        # Main results sheet
-                                        results_df.to_excel(writer, sheet_name='Predictions', index=False)
-                                        
-                                        # Summary sheet
-                                        summary_data = {
-                                            'Metric': [
-                                                'Total Records Processed',
-                                                'Successful Predictions',
-                                                'Failed Predictions',
-                                                'Average Remaining Shelf Life (days)',
-                                                'Critical Status Count',
-                                                'Warning Status Count',
-                                                'Good Status Count',
-                                                'Average Storage Temperature (°C)',
-                                                'Average Storage Humidity (%)'
-                                            ],
-                                            'Value': [
-                                                len(bulk_data),
-                                                len(predictions_list),
-                                                len(errors_list),
-                                                round(results_df['Predicted_Remaining_Shelf_Life'].mean(), 2),
-                                                len(results_df[results_df['Status'] == 'Critical']),
-                                                len(results_df[results_df['Status'] == 'Warning']),
-                                                len(results_df[results_df['Status'] == 'Good']),
-                                                round(results_df['Storage_Temperature'].mean(), 2),
-                                                round(results_df['Storage_Humidity'].mean(), 2)
-                                            ]
-                                        }
-                                        summary_df = pd.DataFrame(summary_data)
-                                        summary_df.to_excel(writer, sheet_name='Summary', index=False)
-                                        
-                                        # Product type analysis sheet
-                                        product_analysis = results_df.groupby('Product_Type').agg({
-                                            'Predicted_Remaining_Shelf_Life': ['mean', 'std', 'count'],
-                                            'Status': lambda x: (x == 'Critical').sum()
-                                        }).round(2)
-                                        product_analysis.columns = ['Avg_Remaining_Shelf_Life', 'Std_Remaining_Shelf_Life', 'Count', 'Critical_Count']
-                                        product_analysis.to_excel(writer, sheet_name='Product_Analysis')
-                                    
-                                    # Download button
-                                    st.download_button(
-                                        label="📥 Download Excel Results",
-                                        data=output.getvalue(),
-                                        file_name=f"shelf_life_predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                    )
-                                    
-                                    st.info("📋 The Excel file contains three sheets:")
-                                    st.write("• **Predictions**: Detailed results for each product")
-                                    st.write("• **Summary**: Overall statistics and metrics")
-                                    st.write("• **Product_Analysis**: Breakdown by product type")
-                                    
-                                else:
-                                    st.error("❌ No predictions were successful. Please check your data format.")
-                                    
+                                except Exception as e:
+                                    st.error(f"Error processing row {idx + 1}: {str(e)}")
+                                    predictions.append(0)
+                            
+                            # Add predictions to dataframe
+                            result_df = bulk_df.copy()
+                            result_df['Predicted_Remaining_Shelf_Life'] = predictions
+                            
+                            # Display results
+                            st.subheader("📊 Prediction Results")
+                            st.dataframe(result_df, use_container_width=True)
+                            
+                            # Summary statistics
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.metric("Total Products", len(result_df))
+                            with col2:
+                                st.metric("Avg Remaining Shelf Life", f"{result_df['Predicted_Remaining_Shelf_Life'].mean():.1f} days")
+                            with col3:
+                                st.metric("Min Shelf Life", f"{result_df['Predicted_Remaining_Shelf_Life'].min():.1f} days")
+                            with col4:
+                                st.metric("Max Shelf Life", f"{result_df['Predicted_Remaining_Shelf_Life'].max():.1f} days")
+                            
+                            # Download button
+                            st.subheader("💾 Download Results")
+                            csv = result_df.to_csv(index=False)
+                            st.download_button(
+                                label="📥 Download as CSV",
+                                data=csv,
+                                file_name="shelf_life_predictions.csv",
+                                mime="text/csv"
+                            )
+                            
+                            # Excel download
+                            output = io.BytesIO()
+                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                result_df.to_excel(writer, sheet_name='Predictions', index=False)
+                            output.seek(0)
+                            
+                            st.download_button(
+                                label="📥 Download as Excel",
+                                data=output.getvalue(),
+                                file_name="shelf_life_predictions.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                            
             except Exception as e:
-                st.error(f"❌ Error reading file: {str(e)}")
-                st.info("Please ensure the file is a valid Excel file (.xlsx or .xls) with the correct format.")
+                st.error(f"Error reading file: {str(e)}")
     
     with tab2:
         st.header("📈 Data Analytics")
-        
-        # Create Product_Type column for analysis
-        df_analysis = df.copy()
-        product_columns = ['Product_Bread', 'Product_Cheese', 'Product_Juice', 'Product_Milk', 'Product_Yogurt']
-        df_analysis['Product_Type'] = 'Other'
-        for col in product_columns:
-            if col in df_analysis.columns:
-                df_analysis.loc[df_analysis[col] == True, 'Product_Type'] = col.replace('Product_', '')
-        
-        # Get unique product types (excluding 'Other')
-        unique_products = df_analysis[df_analysis['Product_Type'] != 'Other']['Product_Type'].unique()
         
         # Summary statistics
         col1, col2, col3, col4 = st.columns(4)
@@ -599,119 +480,77 @@ def main():
         with col1:
             st.metric("Total Products", len(df))
         with col2:
-            st.metric("Unique Product Types", len(unique_products))
+            st.metric("Unique Product Types", df['Product_Type'].nunique())
         with col3:
             st.metric("Avg Remaining Shelf Life", f"{df['Remaining_Shelf_Life'].mean():.1f} days")
         with col4:
             st.metric("Avg Storage Temperature", f"{df['Storage_Temperature'].mean():.1f}°C")
         
-        # Product Type Analysis with detailed metrics
+        # Product type analysis
         st.subheader("📊 Product Type Analysis")
-        
-        # Calculate comprehensive statistics for each product type
-        product_stats = df_analysis[df_analysis['Product_Type'] != 'Other'].groupby('Product_Type').agg({
+        product_stats = df.groupby('Product_Type').agg({
             'Remaining_Shelf_Life': ['mean', 'std', 'count'],
-            'Storage_Temperature': ['mean', 'std'],
-            'Storage_Humidity': ['mean', 'std']
+            'Storage_Temperature': 'mean',
+            'Storage_Humidity': 'mean'
         }).round(2)
         
-        # Flatten column names
-        product_stats.columns = ['_'.join(col).strip() for col in product_stats.columns]
+        product_stats.columns = ['Avg Remaining Shelf Life (days)', 'Std Remaining Shelf Life', 'Count', 'Avg Temperature (°C)', 'Avg Humidity (%)']
         product_stats = product_stats.reset_index()
         
-        # Rename columns for better display
-        product_stats.columns = [
-            'Product Type', 'Avg Remaining Shelf Life (days)', 'Std Remaining Shelf Life', 'Count',
-            'Avg Storage Temperature (°C)', 'Std Storage Temperature', 'Avg Storage Humidity (%)', 'Std Storage Humidity'
-        ]
-        
-        # Display the comprehensive product statistics
         st.dataframe(product_stats, use_container_width=True)
         
         # Visualizations
         col1, col2 = st.columns(2)
         
         with col1:
-            # Remaining shelf life distribution by product type
-            fig = px.box(
-                df_analysis[df_analysis['Product_Type'] != 'Other'],
-                x='Product_Type',
-                y='Remaining_Shelf_Life',
-                title="Remaining Shelf Life by Product Type",
-                color='Product_Type'
+            # Remaining shelf life distribution
+            fig = px.histogram(
+                df, 
+                x='Remaining_Shelf_Life',
+                nbins=30,
+                title="Distribution of Remaining Shelf Life"
             )
-            fig.update_layout(xaxis_title="Product Type", yaxis_title="Remaining Shelf Life (days)")
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            # Temperature vs Remaining shelf life
-            fig = px.scatter(
-                df_analysis[df_analysis['Product_Type'] != 'Other'],
+            # Storage temperature distribution
+            fig = px.histogram(
+                df, 
                 x='Storage_Temperature',
-                y='Remaining_Shelf_Life',
-                color='Product_Type',
-                title="Temperature vs Remaining Shelf Life by Product Type",
-                hover_data=['Storage_Humidity']
+                nbins=20,
+                title="Distribution of Storage Temperature"
             )
-            fig.update_layout(xaxis_title="Storage Temperature (°C)", yaxis_title="Remaining Shelf Life (days)")
             st.plotly_chart(fig, use_container_width=True)
         
-        # Additional visualizations
-        col1, col2 = st.columns(2)
+        # Product type comparison
+        fig = px.box(
+            df,
+            x='Product_Type',
+            y='Remaining_Shelf_Life',
+            title="Remaining Shelf Life by Product Type"
+        )
+        st.plotly_chart(fig, use_container_width=True)
         
-        with col1:
-            # Storage temperature distribution by product type
-            fig = px.box(
-                df_analysis[df_analysis['Product_Type'] != 'Other'],
-                x='Product_Type',
-                y='Storage_Temperature',
-                title="Storage Temperature by Product Type",
-                color='Product_Type'
-            )
-            fig.update_layout(xaxis_title="Product Type", yaxis_title="Storage Temperature (°C)")
-            st.plotly_chart(fig, use_container_width=True)
+        # Correlation heatmap
+        st.subheader("🔗 Feature Correlations")
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        correlation_matrix = df[numeric_cols].corr()
         
-        with col2:
-            # Storage humidity distribution by product type
-            fig = px.box(
-                df_analysis[df_analysis['Product_Type'] != 'Other'],
-                x='Product_Type',
-                y='Storage_Humidity',
-                title="Storage Humidity by Product Type",
-                color='Product_Type'
-            )
-            fig.update_layout(xaxis_title="Product Type", yaxis_title="Storage Humidity (%)")
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Summary insights
-        st.subheader("🔍 Key Insights")
-        
-        # Find best and worst performing products
-        best_product = product_stats.loc[product_stats['Avg Remaining Shelf Life (days)'].idxmax()]
-        worst_product = product_stats.loc[product_stats['Avg Remaining Shelf Life (days)'].idxmin()]
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.info(f"**Best Performing Product:** {best_product['Product Type']}")
-            st.write(f"• Average Remaining Shelf Life: {best_product['Avg Remaining Shelf Life (days)']:.1f} days")
-            st.write(f"• Average Storage Temperature: {best_product['Avg Storage Temperature (°C)']:.1f}°C")
-            st.write(f"• Average Storage Humidity: {best_product['Avg Storage Humidity (%)']:.1f}%")
-        
-        with col2:
-            st.warning(f"**Product Needing Attention:** {worst_product['Product Type']}")
-            st.write(f"• Average Remaining Shelf Life: {worst_product['Avg Remaining Shelf Life (days)']:.1f} days")
-            st.write(f"• Average Storage Temperature: {worst_product['Avg Storage Temperature (°C)']:.1f}°C")
-            st.write(f"• Average Storage Humidity: {worst_product['Avg Storage Humidity (%)']:.1f}%")
+        fig = px.imshow(
+            correlation_matrix,
+            title="Feature Correlation Heatmap",
+            color_continuous_scale='RdBu'
+        )
+        st.plotly_chart(fig, use_container_width=True)
     
     with tab3:
         st.header("🔍 Feature Importance Analysis")
         
         if feature_importance is not None:
-            # Sort features by importance in descending order (highest on top)
+            # Sort by importance (highest first)
             feature_importance_sorted = feature_importance.sort_values('Importance', ascending=False)
             
-            # Top features (already sorted, highest importance on top)
+            # Top features
             top_features = feature_importance_sorted.head(15)
             
             fig = px.bar(
@@ -719,17 +558,13 @@ def main():
                 x='Importance',
                 y='Feature',
                 orientation='h',
-                title="Top 15 Most Important Features (LightGBM) - Highest to Lowest"
+                title="Top 15 Most Important Features (Highest to Lowest)"
             )
-            fig.update_layout(
-                xaxis_title="Feature Importance Score",
-                yaxis_title="Feature Name",
-                yaxis={'categoryorder': 'total ascending'}  # This ensures highest importance appears at the top
-            )
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'})
             st.plotly_chart(fig, use_container_width=True)
             
             # Feature categories
-            st.subheader("Feature Categories")
+            st.subheader("📊 Feature Categories")
             
             # Categorize features
             def categorize_feature(feature_name):
@@ -742,43 +577,36 @@ def main():
                 elif 'Interaction' in feature_name:
                     return 'Interaction Features'
                 elif 'Risk_Score' in feature_name or 'Environmental_Risk' in feature_name:
-                    return 'Risk Scores'
-                elif 'Z_Score' in feature_name or 'Percentile' in feature_name:
-                    return 'Statistical Features'
-                elif 'Flag' in feature_name:
-                    return 'Business Logic Flags'
+                    return 'Risk Assessment'
+                elif 'Temp_' in feature_name or 'Humidity_' in feature_name:
+                    return 'Environmental Factors'
                 elif 'Age' in feature_name or 'Day' in feature_name or 'Month' in feature_name or 'Season' in feature_name:
                     return 'Time-Based Features'
-                elif 'Is_' in feature_name:
-                    return 'Binary Features'
+                elif 'Flag' in feature_name:
+                    return 'Business Logic Flags'
+                elif 'Z_Score' in feature_name or 'Percentile' in feature_name:
+                    return 'Statistical Features'
                 else:
-                    return 'Original Features'
+                    return 'Other'
             
             feature_importance_sorted['Category'] = feature_importance_sorted['Feature'].apply(categorize_feature)
+            
+            # Category importance
             category_importance = feature_importance_sorted.groupby('Category')['Importance'].sum().sort_values(ascending=False)
             
             fig = px.bar(
                 x=category_importance.values,
                 y=category_importance.index,
                 orientation='h',
-                title="Feature Importance by Category - Highest to Lowest"
+                title="Feature Importance by Category"
             )
-            fig.update_layout(
-                xaxis_title="Total Importance Score",
-                yaxis_title="Feature Category",
-                yaxis={'categoryorder': 'total ascending'}  # This ensures highest importance category appears at the top
-            )
+            fig.update_layout(xaxis_title="Total Importance", yaxis_title="Category")
             st.plotly_chart(fig, use_container_width=True)
             
-            # Detailed feature table (sorted by importance)
-            st.subheader("Detailed Feature Importance (Sorted by Importance)")
+            # Detailed feature table
+            st.subheader("📋 Detailed Feature Importance")
             st.dataframe(feature_importance_sorted, use_container_width=True)
             
-            # Top 5 features summary
-            st.subheader("🏆 Top 5 Most Important Features")
-            top_5_features = feature_importance_sorted.head(5)
-            for idx, row in top_5_features.iterrows():
-                st.write(f"**{idx+1}.** {row['Feature']} - Importance Score: {row['Importance']:.2f}")
         else:
             st.warning("Feature importance data not available. Please run feature importance analysis first.")
     
@@ -803,198 +631,109 @@ def main():
             
             **🔍 Natural Language Queries**
             - "Which products have the shortest shelf life?"
-            - "What's the optimal storage temperature for yogurt?"
+            - "How does temperature affect yogurt shelf life?"
+            - "What are the optimal storage conditions for cheese?"
             - "Show me products at risk of spoilage"
-            - "Compare shelf life performance between products"
             """)
         
         with col2:
             st.markdown("""
-            **📈 Business Intelligence**
-            - Provide recommendations for storage optimization
-            - Suggest inventory management strategies
-            - Analyze cost implications of shelf life losses
-            - Generate predictive insights for supply chain planning
+            **💼 Business Intelligence**
+            - Storage optimization recommendations
+            - Inventory management insights
+            - Cost analysis and waste reduction strategies
+            - Supply chain optimization suggestions
             
-            **🎯 Model Interpretation**
-            - Explain why a product has a specific shelf life prediction
+            **🧠 Model Interpretation**
+            - Explain prediction results in plain English
             - Identify key factors affecting shelf life
-            - Suggest feature improvements for better predictions
-            - Validate model assumptions and results
+            - Provide actionable recommendations
+            - Answer "what-if" scenarios
             """)
         
         # Importance and Benefits
-        st.subheader("💡 Why is AI Assistant Important?")
+        st.subheader("🎯 Importance & Benefits")
         
-        st.markdown("""
-        **🎯 Enhanced Decision Making**
-        - Transform complex data into actionable insights
-        - Enable non-technical users to extract valuable information
-        - Provide real-time recommendations for operational decisions
-        
-        **⏱️ Time and Cost Savings**
-        - Automate routine data analysis tasks
-        - Reduce manual report generation time
-        - Enable faster response to shelf life issues
-        
-        **🔬 Advanced Analytics**
-        - Leverage natural language processing for intuitive data exploration
-        - Combine multiple data sources for comprehensive insights
-        - Provide context-aware recommendations based on business rules
-        """)
-        
-        # How it helps users
-        st.subheader("👥 How Can It Help Different Users?")
-        
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("""
-            **🏭 Operations Managers**
-            - Monitor real-time shelf life status
-            - Optimize storage conditions
-            - Plan inventory rotations
-            - Reduce waste and losses
+            **🚀 Enhanced User Experience**
+            - Intuitive natural language interface
+            - No need to learn complex query languages
+            - Instant insights and recommendations
+            - Personalized analytics experience
+            
+            **📈 Improved Decision Making**
+            - Data-driven insights for managers
+            - Real-time problem identification
+            - Proactive risk management
+            - Optimized resource allocation
             """)
         
         with col2:
             st.markdown("""
-            **📊 Data Analysts**
-            - Explore data through natural language
-            - Generate automated reports
-            - Identify patterns and trends
-            - Validate model performance
+            **💰 Business Value**
+            - Reduced food waste and costs
+            - Improved customer satisfaction
+            - Better inventory management
+            - Competitive advantage through AI
+            
+            **🔬 Advanced Analytics**
+            - Pattern recognition beyond traditional analysis
+            - Predictive insights and forecasting
+            - Automated report generation
+            - Continuous learning and improvement
             """)
         
-        with col3:
-            st.markdown("""
-            **🎯 Business Stakeholders**
-            - Get executive summaries
-            - Understand business impact
-            - Make informed decisions
-            - Track KPIs and metrics
-            """)
+        # Implementation Roadmap
+        st.subheader("🛣️ Implementation Roadmap")
         
-        # Technical Implementation
-        st.subheader("🔧 Technical Implementation")
+        roadmap_data = {
+            "Phase": ["Phase 1", "Phase 2", "Phase 3", "Phase 4"],
+            "Timeline": ["Q1 2024", "Q2 2024", "Q3 2024", "Q4 2024"],
+            "Features": [
+                "Basic NLP integration, Simple Q&A",
+                "Advanced analytics queries, Report generation",
+                "Predictive insights, Anomaly detection",
+                "Full conversational AI, Integration with external systems"
+            ],
+            "Status": ["🟡 In Planning", "🟡 Planned", "🟡 Planned", "🟡 Planned"]
+        }
+        
+        roadmap_df = pd.DataFrame(roadmap_data)
+        st.dataframe(roadmap_df, use_container_width=True)
+        
+        # Technical Requirements
+        st.subheader("⚙️ Technical Requirements")
         
         st.markdown("""
-        **🛠️ Planned Features:**
-        - **OpenAI GPT Integration**: Leverage advanced language models for natural language understanding
-        - **SQL Query Generation**: Convert natural language to database queries
-        - **Real-time Data Access**: Connect to live data sources for current insights
-        - **Custom Knowledge Base**: Train on domain-specific shelf life knowledge
-        - **Multi-modal Support**: Handle text, charts, and data visualizations
-        
-        **🔐 Security & Privacy:**
+        **🔧 Infrastructure Needs:**
+        - Large Language Model (LLM) API integration
+        - Natural Language Processing (NLP) capabilities
+        - Real-time data processing
         - Secure API key management
-        - Data encryption and privacy protection
-        - Role-based access control
-        - Audit trails for all interactions
-        """)
         
-        # Future Roadmap
-        st.subheader("🚀 Future Development Roadmap")
-        
-        st.markdown("""
-        **Phase 1: Basic Integration**
-        - Natural language query processing
-        - Basic data insights and recommendations
-        - Simple report generation
-        
-        **Phase 2: Advanced Analytics**
-        - Predictive insights and forecasting
-        - Automated anomaly detection
-        - Integration with external data sources
-        
-        **Phase 3: Enterprise Features**
-        - Multi-user collaboration
-        - Custom knowledge base training
-        - Advanced visualization capabilities
+        **📊 Data Integration:**
+        - SQL query generation from natural language
+        - Real-time data access and processing
+        - Context-aware responses
+        - Multi-modal data handling
         """)
         
         # Call to Action
-        st.subheader("📞 Get Involved")
+        st.subheader("🎯 Get Started Today")
         
         st.markdown("""
-        **💬 We'd Love Your Input!**
-        - What specific questions would you like to ask about your shelf life data?
-        - Which types of insights would be most valuable for your operations?
-        - How would you prefer to interact with the AI Assistant?
+        While the AI Assistant is in development, you can:
         
-        **📧 Contact Us:**
-        Share your feedback and requirements to help shape the development of this feature!
+        ✅ **Use the current prediction and analytics features**
+        ✅ **Upload bulk data for batch processing**
+        ✅ **Explore feature importance analysis**
+        ✅ **Download detailed reports and insights**
+        
+        **Stay tuned for AI Assistant updates!** 🤖✨
         """)
-        
-        # Demo placeholder
-        st.subheader("🎬 Demo Preview")
-        
-        with st.expander("See Example AI Assistant Interactions"):
-            st.markdown("""
-            **Example 1: Data Analysis**
-            ```
-            User: "Which products are most sensitive to temperature changes?"
-            AI: "Based on the data, yogurt and milk show the highest sensitivity 
-                 to temperature variations. Products stored above 8°C show a 
-                 23% reduction in shelf life compared to optimal conditions."
-            ```
-            
-            **Example 2: Business Intelligence**
-            ```
-            User: "What's the financial impact of current storage conditions?"
-            AI: "Current storage conditions are causing an estimated 15% shelf 
-                 life reduction, resulting in approximately $45,000 monthly 
-                 losses. Optimizing temperature control could save $12,000/month."
-            ```
-            
-            **Example 3: Operational Recommendations**
-            ```
-            User: "How can I improve shelf life for dairy products?"
-            AI: "For dairy products, I recommend:
-                 • Maintain temperature between 2-4°C
-                 • Keep humidity below 70%
-                 • Reduce transit time to under 3 days
-                 • Implement FIFO inventory rotation"
-            ```
-            """)
 
 if __name__ == "__main__":
     main()
-
-<<<<<<< HEAD
-=======
-st.markdown('---')
-st.markdown('**Business Impact:**')
-st.markdown('This tool helps anticipate shelf life issues, optimize inventory, and reduce waste, leading to cost savings and improved sustainability.')
-
-# --- Conversational Analytics (AI Assistant) ---
-
-#st.markdown("---")
-#st.header("Conversational Analytics (AI Assistant)")
-
-# Set your Gemini API key
-#genai.configure(api_key="AIzaSyCAJwDJDi69H_GjdxeTn-BjCEc8KbsW8jY")
-
-# List available models
-#st.subheader("Available Gemini Models")
-#models = [m.name for m in genai.list_models()]
-#st.write(models)
-
-# Use the correct model name from the list
-#model = genai.GenerativeModel("models/gemini-1.5-pro-latest")
-
-# User input for the assistant
-#user_question = st.text_input("Ask a question about shelf life analytics:")
-
-#if st.button("Ask Gemini"):
-#    if user_question.strip():
-#       with st.spinner("Gemini is thinking..."):
-#           try:
-#               response = model.generate_content(user_question)
-#               st.markdown("**Gemini's Answer:**")
-#               st.write(response.text)
-#           except Exception as e:
-#               st.error("Gemini API quota exceeded. Please try again later or check your API usage limits.")
-#    else:
-#        st.warning("Please enter a question.")
->>>>>>> da20895ba7e790b0bed78215f4b3fe44f9397534
