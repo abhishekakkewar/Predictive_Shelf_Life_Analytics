@@ -474,6 +474,12 @@ def main():
     with tab2:
         st.header("📈 Data Analytics")
         
+        # Create Product_Type column from one-hot encoded columns
+        df['Product_Type'] = 'Unknown'
+        for product in ['Bread', 'Cheese', 'Juice', 'Milk', 'Yogurt']:
+            mask = df[f'Product_{product}'] == 1
+            df.loc[mask, 'Product_Type'] = product
+        
         # Summary statistics
         col1, col2, col3, col4 = st.columns(4)
         
