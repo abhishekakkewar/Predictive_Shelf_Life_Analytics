@@ -764,7 +764,7 @@ def main():
                 orientation='h',
                 title="Feature Importance by Category"
             )
-            fig.update_layout(xaxis_title="Total Importance", yaxis_title="Category")
+            fig.update_layout(xaxis_title="Total Importance", yaxis_title="Category", yaxis={'categoryorder': 'total descending'})
             st.plotly_chart(fig, use_container_width=True)
             
             # Detailed feature table
