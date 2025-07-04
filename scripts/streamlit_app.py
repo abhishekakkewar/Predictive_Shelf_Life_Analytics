@@ -40,6 +40,27 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
     }
+    
+    /* Make background white */
+    .stApp {
+        background-color: white;
+    }
+    
+    /* Style for better visual alignment */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: #f0f2f6;
+        border-radius: 4px 4px 0px 0px;
+        padding: 10px 16px;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #1f77b4;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -278,7 +299,7 @@ def main():
         with col2:
             st.subheader("Environmental Conditions")
             
-            storage_temperature = st.number_input(
+            storage_temperature = st.slider(
                 "Storage Temperature (°C)",
                 min_value=-10.0,
                 max_value=25.0,
@@ -286,7 +307,7 @@ def main():
                 step=0.1
             )
             
-            storage_humidity = st.number_input(
+            storage_humidity = st.slider(
                 "Storage Humidity (%)",
                 min_value=20.0,
                 max_value=100.0,
@@ -505,7 +526,10 @@ def main():
         
         st.dataframe(product_stats, use_container_width=True)
         
-        # Visualizations
+        # Enhanced Visualizations
+        st.subheader("📈 Detailed Analytics")
+        
+        # Row 1: Distribution plots
         col1, col2 = st.columns(2)
         
         with col1:
@@ -514,8 +538,10 @@ def main():
                 df, 
                 x='Remaining_Shelf_Life',
                 nbins=30,
-                title="Distribution of Remaining Shelf Life"
+                title="Distribution of Remaining Shelf Life",
+                color_discrete_sequence=['#1f77b4']
             )
+            fig.update_layout(showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
@@ -524,30 +550,134 @@ def main():
                 df, 
                 x='Storage_Temperature',
                 nbins=20,
-                title="Distribution of Storage Temperature"
+                title="Distribution of Storage Temperature",
+                color_discrete_sequence=['#ff7f0e']
+            )
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Row 2: Product analysis
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Product type comparison
+            fig = px.box(
+                df,
+                x='Product_Type',
+                y='Remaining_Shelf_Life',
+                title="Remaining Shelf Life by Product Type",
+                color='Product_Type'
             )
             st.plotly_chart(fig, use_container_width=True)
         
-        # Product type comparison
-        fig = px.box(
-            df,
-            x='Product_Type',
-            y='Remaining_Shelf_Life',
-            title="Remaining Shelf Life by Product Type"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            # Humidity distribution
+            fig = px.histogram(
+                df,
+                x='Storage_Humidity',
+                nbins=20,
+                title="Distribution of Storage Humidity",
+                color_discrete_sequence=['#2ca02c']
+            )
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Row 3: Scatter plots and correlations
+        st.subheader("🔗 Relationship Analysis")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Temperature vs Shelf Life
+            fig = px.scatter(
+                df,
+                x='Storage_Temperature',
+                y='Remaining_Shelf_Life',
+                color='Product_Type',
+                title="Temperature vs Remaining Shelf Life",
+                trendline="ols"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Humidity vs Shelf Life
+            fig = px.scatter(
+                df,
+                x='Storage_Humidity',
+                y='Remaining_Shelf_Life',
+                color='Product_Type',
+                title="Humidity vs Remaining Shelf Life",
+                trendline="ols"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Row 4: Advanced analytics
+        st.subheader("📊 Advanced Analytics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Days in transit analysis
+            fig = px.box(
+                df,
+                x='Days_in_Transit',
+                y='Remaining_Shelf_Life',
+                color='Product_Type',
+                title="Impact of Transit Days on Shelf Life"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Product age analysis
+            fig = px.scatter(
+                df,
+                x='Product_Age',
+                y='Remaining_Shelf_Life',
+                color='Product_Type',
+                title="Product Age vs Remaining Shelf Life",
+                trendline="ols"
+            )
+            st.plotly_chart(fig, use_container_width=True)
         
         # Correlation heatmap
-        st.subheader("🔗 Feature Correlations")
+        st.subheader("🔗 Feature Correlation Heatmap")
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         correlation_matrix = df[numeric_cols].corr()
         
         fig = px.imshow(
             correlation_matrix,
             title="Feature Correlation Heatmap",
-            color_continuous_scale='RdBu'
+            color_continuous_scale='RdBu',
+            aspect="auto"
         )
+        fig.update_layout(height=600)
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Summary insights
+        st.subheader("💡 Key Insights")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.info("""
+            **Temperature Impact:**
+            - Lower temperatures generally extend shelf life
+            - Optimal range: 2-6°C for most products
+            """)
+        
+        with col2:
+            st.info("""
+            **Humidity Effect:**
+            - High humidity (>75%) reduces shelf life
+            - Optimal range: 50-70% for most products
+            """)
+        
+        with col3:
+            st.info("""
+            **Transit Time:**
+            - Longer transit reduces remaining shelf life
+            - Critical for perishable products
+            """)
     
     with tab3:
         st.header("🔍 Feature Importance Analysis")
@@ -692,23 +822,41 @@ def main():
             - Continuous learning and improvement
             """)
         
-        # Implementation Roadmap
-        st.subheader("🛣️ Implementation Roadmap")
+        # Example Questions and Answers
+        st.subheader("💬 Example Questions & Answers")
         
-        roadmap_data = {
-            "Phase": ["Phase 1", "Phase 2", "Phase 3", "Phase 4"],
-            "Timeline": ["Q1 2024", "Q2 2024", "Q3 2024", "Q4 2024"],
-            "Features": [
-                "Basic NLP integration, Simple Q&A",
-                "Advanced analytics queries, Report generation",
-                "Predictive insights, Anomaly detection",
-                "Full conversational AI, Integration with external systems"
-            ],
-            "Status": ["🟡 In Planning", "🟡 Planned", "🟡 Planned", "🟡 Planned"]
-        }
+        st.markdown("""
+        **Here are some example questions you could ask the AI Assistant when it's available:**
+        """)
         
-        roadmap_df = pd.DataFrame(roadmap_data)
-        st.dataframe(roadmap_df, use_container_width=True)
+        # Example Q&A
+        examples = [
+            {
+                "question": "Which products have the shortest remaining shelf life?",
+                "answer": "Based on the data, yogurt products typically have the shortest shelf life (average 14-28 days), followed by milk (7-21 days). Products with high storage temperatures (>8°C) or humidity (>75%) show significantly reduced shelf life."
+            },
+            {
+                "question": "How does temperature affect yogurt shelf life?",
+                "answer": "Temperature has a strong negative correlation with yogurt shelf life. For every 1°C increase above 4°C, shelf life decreases by approximately 2-3 days. Optimal storage temperature for yogurt is 2-6°C."
+            },
+            {
+                "question": "What are the optimal storage conditions for cheese?",
+                "answer": "Cheese performs best at 2-6°C with 60-80% humidity. Lower temperatures extend shelf life significantly, while high humidity (>80%) can cause spoilage. Transit time should be minimized to under 5 days."
+            },
+            {
+                "question": "Show me products at risk of spoilage",
+                "answer": "Products with remaining shelf life <7 days, storage temperature >10°C, or humidity >80% are at high risk. Current analysis shows 15% of products fall into high-risk categories and should be prioritized for immediate action."
+            },
+            {
+                "question": "What factors most impact shelf life prediction accuracy?",
+                "answer": "The top factors are: 1) Initial shelf life (39% importance), 2) Temperature-transit interactions (38% importance), 3) Humidity-transit interactions (38% importance). Environmental conditions and product age are also critical."
+            }
+        ]
+        
+        for i, example in enumerate(examples, 1):
+            with st.expander(f"Example {i}: {example['question']}"):
+                st.markdown(f"**Q:** {example['question']}")
+                st.markdown(f"**A:** {example['answer']}")
         
         # Technical Requirements
         st.subheader("⚙️ Technical Requirements")
