@@ -959,7 +959,7 @@ def main():
             st.markdown("The plot below shows which features have the biggest impact on model predictions across the whole dataset.")
             # SHAP summary plot (bar)
             import matplotlib.pyplot as plt
-            fig_summary, ax = plt.subplots(figsize=(8, 5))
+            fig_summary, ax = plt.subplots(figsize=(5, 3))
             shap.summary_plot(shap_values, X, plot_type="bar", show=False)
             st.pyplot(fig_summary)
 
