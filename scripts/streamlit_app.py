@@ -6,9 +6,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+<<<<<<< HEAD
 from datetime import datetime, timedelta, date
 import warnings
 warnings.filterwarnings('ignore')
+=======
+#import google.generativeai as genai
+>>>>>>> da20895ba7e790b0bed78215f4b3fe44f9397534
 
 # Page configuration
 st.set_page_config(
@@ -957,3 +961,40 @@ def main():
 if __name__ == "__main__":
     main()
 
+<<<<<<< HEAD
+=======
+st.markdown('---')
+st.markdown('**Business Impact:**')
+st.markdown('This tool helps anticipate shelf life issues, optimize inventory, and reduce waste, leading to cost savings and improved sustainability.')
+
+# --- Conversational Analytics (AI Assistant) ---
+
+#st.markdown("---")
+#st.header("Conversational Analytics (AI Assistant)")
+
+# Set your Gemini API key
+#genai.configure(api_key="AIzaSyCAJwDJDi69H_GjdxeTn-BjCEc8KbsW8jY")
+
+# List available models
+#st.subheader("Available Gemini Models")
+#models = [m.name for m in genai.list_models()]
+#st.write(models)
+
+# Use the correct model name from the list
+#model = genai.GenerativeModel("models/gemini-1.5-pro-latest")
+
+# User input for the assistant
+#user_question = st.text_input("Ask a question about shelf life analytics:")
+
+#if st.button("Ask Gemini"):
+#    if user_question.strip():
+#       with st.spinner("Gemini is thinking..."):
+#           try:
+#               response = model.generate_content(user_question)
+#               st.markdown("**Gemini's Answer:**")
+#               st.write(response.text)
+#           except Exception as e:
+#               st.error("Gemini API quota exceeded. Please try again later or check your API usage limits.")
+#    else:
+#        st.warning("Please enter a question.")
+>>>>>>> da20895ba7e790b0bed78215f4b3fe44f9397534
